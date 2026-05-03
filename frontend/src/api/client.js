@@ -21,12 +21,6 @@ export const getTransactions = () => api.get('/api/transactions');
 export const createTransaction = (data) => api.post('/api/transactions', data);
 export const deleteTransaction = (id) => api.delete(`/api/transactions/${id}`);
 
-// ── Chat ─────────────────────────────────────────────────
-export const sendChatMessage = (message, sessionId = 'default') =>
-  api.post('/api/chat', { message, session_id: sessionId });
-export const getChatHistory = () => api.get('/api/chat/history');
-export const clearChatHistory = () => api.delete('/api/chat/history');
-export const getAgentStatus = () => api.get('/api/chat/status');
 
 // ── Export ────────────────────────────────────────────────
 export const exportTransactionsExcel = () =>

@@ -11,7 +11,7 @@ const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/products', icon: Package, label: 'Produk & Stok' },
   { to: '/transactions', icon: ArrowLeftRight, label: 'Transaksi' },
-  { to: '/chat', icon: MessageCircle, label: 'AI Chat Agent' },
+  { to: '/chat', icon: MessageCircle, label: 'AI WhatsApp' },
 ];
 
 export default function Sidebar() {

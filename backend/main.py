@@ -15,9 +15,8 @@ import os
 load_dotenv()
 
 from database import engine, get_db, Base
-from models import Product, Transaction, ChatHistory
+from models import Product, Transaction
 import crud
-from services.openclaw_service import send_message_to_agent, check_agent_health
 from services.excel_service import export_transactions, export_products
 
 # Buat semua tabel jika belum ada
@@ -74,11 +73,6 @@ class TransactionCreate(BaseModel):
     quantity: int
     type: str = "sale"   # "sale" atau "purchase"
     note: str = ""
-
-
-class ChatMessage(BaseModel):
-    message: str
-    session_id: str = "default"
 
 
 # ════════════════════════════════════════════════════════════
@@ -160,47 +154,6 @@ async def delete_transaction(tx_id: str, db: Session = Depends(get_db)):
     """Hapus transaksi."""
     crud.delete_transaction(db, tx_id)
     return {"message": "Transaction deleted"}
-
-
-# ════════════════════════════════════════════════════════════
-# Chat — OpenClaw Agent via SSH Tunnel
-# ════════════════════════════════════════════════════════════
-
-@app.post("/api/chat")
-async def chat_with_agent(msg: ChatMessage, db: Session = Depends(get_db)):
-    """Kirim pesan ke OpenClaw agent via SSH tunnel dan kembalikan respons."""
-    # Simpan pesan user ke database
-    crud.add_chat(db, "user", msg.message)
-
-    # Forward ke OpenClaw via tunnel
-    result = await send_message_to_agent(msg.message, msg.session_id)
-
-    # Simpan balasan agent ke database
-    crud.add_chat(db, "assistant", result["reply"])
-
-    return {
-        "reply": result["reply"],
-        "success": result["success"],
-    }
-
-
-@app.get("/api/chat/history")
-async def get_chat_history(db: Session = Depends(get_db)):
-    """Ambil riwayat chat dari database."""
-    return crud.get_chat_history(db)
-
-
-@app.delete("/api/chat/history")
-async def clear_chat_history(db: Session = Depends(get_db)):
-    """Hapus semua riwayat chat."""
-    crud.clear_chat(db)
-    return {"message": "Chat history cleared"}
-
-
-@app.get("/api/chat/status")
-async def agent_status():
-    """Cek apakah OpenClaw agent online via SSH tunnel."""
-    return await check_agent_health()
 
 
 # ════════════════════════════════════════════════════════════

@@ -1,192 +1,88 @@
-import { useState, useEffect, useRef } from 'react';
-import {
-  Send,
-  Bot,
-  User,
-  Trash2,
-  Sparkles,
-  MessageCircle,
-} from 'lucide-react';
-import { sendChatMessage, getChatHistory, clearChatHistory } from '../api/client';
-
-const SUGGESTIONS = [
-  'Tampilkan ringkasan penjualan hari ini',
-  'Tambahkan produk baru: Tablet Samsung, stok 20, harga 5 juta',
-  'Catat penjualan 3 unit Mouse Logitech MX',
-  'Produk mana yang stoknya rendah?',
-  'Buatkan laporan Excel transaksi',
-];
+import { MessageCircle, ExternalLink, Bot, Zap, Clock } from 'lucide-react';
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const messagesEndRef = useRef(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    loadHistory();
-  }, []);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, loading]);
-
-  const loadHistory = async () => {
-    try {
-      const res = await getChatHistory();
-      setMessages(res.data);
-    } catch (err) {
-      // No history yet, that's fine
-    }
-  };
-
-  const handleSend = async (text) => {
-    const msg = text || input.trim();
-    if (!msg) return;
-
-    // Optimistic update — add user message immediately
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `temp-${Date.now()}`,
-        role: 'user',
-        content: msg,
-        timestamp: new Date().toISOString(),
-      },
-    ]);
-    setInput('');
-    setLoading(true);
-
-    try {
-      const res = await sendChatMessage(msg);
-      // Add agent reply
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `agent-${Date.now()}`,
-          role: 'assistant',
-          content: res.data.reply,
-          timestamp: new Date().toISOString(),
-        },
-      ]);
-    } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `err-${Date.now()}`,
-          role: 'assistant',
-          content: '❌ Gagal menghubungi agent. Pastikan backend dan SSH tunnel aktif.',
-          timestamp: new Date().toISOString(),
-        },
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleClear = async () => {
-    if (!confirm('Hapus semua riwayat chat?')) return;
-    try {
-      await clearChatHistory();
-      setMessages([]);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
+  const whatsappNumber = '6282199152980';
+  const waUrl = `https://wa.me/${whatsappNumber}?text=Halo%20Asisten%20Bisnis`;
 
   return (
     <div className="fade-in-up">
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <h2>AI Chat Agent</h2>
-          <p>Kelola bisnis Anda lewat percakapan dengan OpenClaw Agent</p>
-        </div>
-        {messages.length > 0 && (
-          <button className="btn btn-secondary btn-sm" onClick={handleClear}>
-            <Trash2 size={14} /> Hapus Riwayat
-          </button>
-        )}
+      <div className="page-header" style={{ textAlign: 'center', marginBottom: '40px' }}>
+        <h2>AI Agent WhatsApp</h2>
+        <p>Asisten bisnis Anda sekarang tersedia langsung di saku Anda, 24/7.</p>
       </div>
 
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="chat-container">
-          <div className="chat-messages">
-            {messages.length === 0 && !loading && (
-              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                <Sparkles size={48} style={{ color: 'var(--accent-purple)', opacity: 0.5, marginBottom: 16 }} />
-                <h3 style={{ fontSize: '1.1rem', marginBottom: 8, color: 'var(--text-secondary)' }}>
-                  Halo! Saya AI Agent Anda 👋
-                </h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 24, maxWidth: 400, margin: '0 auto 24px' }}>
-                  Saya bisa membantu mengelola produk, mencatat transaksi, mengecek stok, dan membuat laporan. Coba salah satu contoh di bawah!
-                </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-                  {SUGGESTIONS.map((s, i) => (
-                    <button
-                      key={i}
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => handleSend(s)}
-                      style={{ fontSize: '0.8rem' }}
-                    >
-                      <MessageCircle size={12} /> {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {messages.map((msg) => (
-              <div key={msg.id} className={`chat-bubble ${msg.role}`}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, fontSize: '0.75rem', fontWeight: 600, opacity: 0.7 }}>
-                  {msg.role === 'user' ? <User size={12} /> : <Bot size={12} />}
-                  {msg.role === 'user' ? 'Anda' : 'AI Agent'}
-                </div>
-                <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
-                <div className="chat-bubble-time">
-                  {msg.timestamp?.slice(11, 16)}
-                </div>
-              </div>
-            ))}
-
-            {loading && (
-              <div className="typing-indicator">
-                <div className="typing-dot" />
-                <div className="typing-dot" />
-                <div className="typing-dot" />
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
+      <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+        <div className="card" style={{ padding: '40px 30px', textAlign: 'center', background: 'linear-gradient(to bottom, #ffffff, #fafafa)' }}>
+          <div style={{
+            width: '80px',
+            height: '80px',
+            background: 'rgba(37, 211, 102, 0.1)',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 24px',
+            color: '#25D366'
+          }}>
+            <MessageCircle size={40} />
           </div>
 
-          <div className="chat-input-area">
-            <input
-              id="chat-input"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ketik pesan... (contoh: Tambahkan produk baru)"
-              disabled={loading}
-            />
-            <button
-              className="chat-send-btn"
-              onClick={() => handleSend()}
-              disabled={loading || !input.trim()}
-              id="btn-send-chat"
-            >
-              <Send size={20} />
-            </button>
+          <h3 style={{ fontSize: '1.5rem', marginBottom: '16px', color: 'var(--text-primary)' }}>
+            Hubungkan ke WhatsApp
+          </h3>
+          
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '32px', lineHeight: '1.6' }}>
+            Kami telah memindahkan pengalaman AI Agent langsung ke WhatsApp untuk kemudahan akses dan performa yang lebih cepat. Tidak perlu lagi login ke dashboard untuk mencatat transaksi atau mengecek stok!
+          </p>
+
+          <a 
+            href={waUrl} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '10px',
+              background: '#25D366',
+              color: 'white',
+              padding: '14px 28px',
+              borderRadius: '12px',
+              fontWeight: '600',
+              fontSize: '1.1rem',
+              textDecoration: 'none',
+              boxShadow: '0 4px 14px rgba(37, 211, 102, 0.3)',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(37, 211, 102, 0.4)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 14px rgba(37, 211, 102, 0.3)';
+            }}
+          >
+            <MessageCircle size={22} />
+            Chat dengan AI Sekarang
+            <ExternalLink size={18} style={{ opacity: 0.8 }} />
+          </a>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px', marginTop: '30px' }}>
+          <div className="card" style={{ padding: '20px', textAlign: 'center', background: 'white' }}>
+            <Bot size={24} style={{ color: 'var(--accent-purple)', margin: '0 auto 12px' }} />
+            <h4 style={{ fontSize: '0.9rem', marginBottom: '8px' }}>OpenClaw AI</h4>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Didukung oleh teknologi AI cerdas untuk bisnis</p>
+          </div>
+          <div className="card" style={{ padding: '20px', textAlign: 'center', background: 'white' }}>
+            <Zap size={24} style={{ color: '#F59E0B', margin: '0 auto 12px' }} />
+            <h4 style={{ fontSize: '0.9rem', marginBottom: '8px' }}>Respon Instan</h4>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Pencatatan penjualan dan stok dalam hitungan detik</p>
+          </div>
+          <div className="card" style={{ padding: '20px', textAlign: 'center', background: 'white' }}>
+            <Clock size={24} style={{ color: '#3B82F6', margin: '0 auto 12px' }} />
+            <h4 style={{ fontSize: '0.9rem', marginBottom: '8px' }}>Aktif 24/7</h4>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Asisten Anda tidak pernah tidur, siap kapan saja</p>
           </div>
         </div>
       </div>
