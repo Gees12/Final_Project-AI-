@@ -7,7 +7,7 @@ import {
   AlertTriangle,
   X,
 } from 'lucide-react';
-import { getProducts, createProduct, updateProduct, deleteProduct } from '../api/client';
+import { getProducts, createProduct, updateProduct, deleteProduct, clearAllData } from '../api/client';
 
 function formatRupiah(num) {
   return new Intl.NumberFormat('id-ID', {
@@ -88,6 +88,20 @@ export default function ProductsPage() {
     }
   };
 
+  const handleClearAll = async () => {
+    const ok = confirm(
+      'Yakin ingin menghapus SEMUA data?\n\nIni akan menghapus semua produk, semua transaksi, dan riwayat chat.\nTindakan ini tidak bisa dibatalkan.'
+    );
+    if (!ok) return;
+    try {
+      await clearAllData();
+      loadProducts();
+      alert('Semua data berhasil dihapus.');
+    } catch (err) {
+      alert('Error: ' + (err.response?.data?.detail || err.message));
+    }
+  };
+
   return (
     <div className="fade-in-up">
       <div className="page-header">
@@ -98,13 +112,18 @@ export default function ProductsPage() {
       <div className="toolbar">
         <div className="toolbar-left">
           <Package size={18} style={{ color: 'var(--accent-amber)' }} />
-          <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+          <span className="recent-meta" style={{ fontSize: '0.9rem' }}>
             {products.length} produk
           </span>
         </div>
-        <button className="btn btn-primary" onClick={openAdd} id="btn-add-product">
-          <Plus size={16} /> Tambah Produk
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-danger" onClick={handleClearAll} type="button">
+            <Trash2 size={16} /> Hapus Semua Data
+          </button>
+          <button className="btn btn-primary" onClick={openAdd} id="btn-add-product">
+            <Plus size={16} /> Tambah Produk
+          </button>
+        </div>
       </div>
 
       <div className="card">

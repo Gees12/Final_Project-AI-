@@ -7,7 +7,7 @@ import {
   TrendingUp,
   TrendingDown,
 } from 'lucide-react';
-import { getTransactions, createTransaction, deleteTransaction, getProducts } from '../api/client';
+import { getTransactions, createTransaction, deleteTransaction, getProducts, clearAllData } from '../api/client';
 
 function formatRupiah(num) {
   return new Intl.NumberFormat('id-ID', {
@@ -71,6 +71,20 @@ export default function TransactionsPage() {
     }
   };
 
+  const handleClearAll = async () => {
+    const ok = confirm(
+      'Yakin ingin menghapus SEMUA data?\n\nIni akan menghapus semua produk, semua transaksi, dan riwayat chat.\nTindakan ini tidak bisa dibatalkan.'
+    );
+    if (!ok) return;
+    try {
+      await clearAllData();
+      loadData();
+      alert('Semua data berhasil dihapus.');
+    } catch (err) {
+      alert('Error: ' + (err.response?.data?.detail || err.message));
+    }
+  };
+
   return (
     <div className="fade-in-up">
       <div className="page-header">
@@ -81,13 +95,18 @@ export default function TransactionsPage() {
       <div className="toolbar">
         <div className="toolbar-left">
           <ArrowLeftRight size={18} style={{ color: 'var(--accent-blue)' }} />
-          <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+          <span className="recent-meta" style={{ fontSize: '0.9rem' }}>
             {transactions.length} transaksi
           </span>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)} id="btn-add-transaction">
-          <Plus size={16} /> Tambah Transaksi
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-danger" onClick={handleClearAll} type="button">
+            <Trash2 size={16} /> Hapus Semua Data
+          </button>
+          <button className="btn btn-primary" onClick={() => setShowModal(true)} id="btn-add-transaction">
+            <Plus size={16} /> Tambah Transaksi
+          </button>
+        </div>
       </div>
 
       <div className="card">

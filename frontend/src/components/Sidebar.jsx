@@ -19,10 +19,10 @@ export default function Sidebar() {
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="sidebar-logo">
-          <div className="sidebar-logo-icon">📊</div>
+          <div className="sidebar-logo-icon">U</div>
           <div>
-            <h1>BizDash</h1>
-            <span>AI-Powered Dashboard</span>
+            <h1>UMKasM</h1>
+            <span>Simple chat, smart cash</span>
           </div>
         </div>
       </div>
@@ -46,7 +46,7 @@ export default function Sidebar() {
       <div className="sidebar-footer">
         <div className="agent-status">
           <Bot size={16} />
-          <span>OpenClaw Agent</span>
+          <span>AI Assistant</span>
           <div className="status-dot online" title="Online" />
         </div>
       </div>
