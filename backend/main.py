@@ -3,11 +3,11 @@ FastAPI Main Application — Dashboard Bisnis
 Backend menggunakan SQLite database via SQLAlchemy.
 """
 
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Literal
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 import os
@@ -80,9 +80,12 @@ class TransactionCreate(BaseModel):
 # ════════════════════════════════════════════════════════════
 
 @app.get("/api/dashboard/summary")
-async def get_dashboard_summary(db: Session = Depends(get_db)):
+async def get_dashboard_summary(
+    period: Literal["day", "week", "month", "year"] = Query(default="week"),
+    db: Session = Depends(get_db),
+):
     """Ringkasan dashboard: total penjualan, stok rendah, chart."""
-    return crud.get_summary(db)
+    return crud.get_summary(db, period=period)
 
 
 # ════════════════════════════════════════════════════════════
@@ -154,6 +157,16 @@ async def delete_transaction(tx_id: str, db: Session = Depends(get_db)):
     """Hapus transaksi."""
     crud.delete_transaction(db, tx_id)
     return {"message": "Transaction deleted"}
+
+
+# ════════════════════════════════════════════════════════════
+# Admin (Danger Zone)
+# ════════════════════════════════════════════════════════════
+
+@app.delete("/api/admin/clear-all")
+async def clear_all_data(db: Session = Depends(get_db)):
+    """Hapus semua data (produk, transaksi, chat)."""
+    return crud.clear_all_data(db)
 
 
 # ════════════════════════════════════════════════════════════

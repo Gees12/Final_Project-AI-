@@ -8,7 +8,8 @@ const api = axios.create({
 });
 
 // ── Dashboard ────────────────────────────────────────────
-export const getDashboardSummary = () => api.get('/api/dashboard/summary');
+export const getDashboardSummary = (period = 'week') =>
+  api.get('/api/dashboard/summary', { params: { period } });
 
 // ── Products ─────────────────────────────────────────────
 export const getProducts = () => api.get('/api/products');
@@ -20,6 +21,9 @@ export const deleteProduct = (id) => api.delete(`/api/products/${id}`);
 export const getTransactions = () => api.get('/api/transactions');
 export const createTransaction = (data) => api.post('/api/transactions', data);
 export const deleteTransaction = (id) => api.delete(`/api/transactions/${id}`);
+
+// ── Admin (Danger Zone) ────────────────────────────────────
+export const clearAllData = () => api.delete('/api/admin/clear-all');
 
 
 // ── Export ────────────────────────────────────────────────

@@ -4,7 +4,7 @@ Semua operasi database menggunakan SQLAlchemy session.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -122,25 +122,87 @@ def delete_transaction(db: Session, tx_id: str) -> None:
 # Dashboard Summary
 # ════════════════════════════════════════════════════════════
 
-def get_summary(db: Session) -> dict:
+def _get_period_range(period: str) -> tuple[datetime, datetime]:
+    now = datetime.now()
+
+    if period == "day":
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=1)
+    elif period == "month":
+        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if start.month == 12:
+            end = start.replace(year=start.year + 1, month=1)
+        else:
+            end = start.replace(month=start.month + 1)
+    elif period == "year":
+        start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        end = start.replace(year=start.year + 1)
+    else:
+        # Default minggu berjalan: Senin 00:00 sampai Senin berikutnya.
+        start = (now - timedelta(days=now.weekday())).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        end = start + timedelta(days=7)
+
+    return start, end
+
+
+def _build_chart_data(transactions: list[Transaction], period: str, start: datetime) -> list[dict]:
+    sales_transactions = [t for t in transactions if t.type == "sale" and t.created_at]
+
+    if period == "day":
+        buckets = [0.0] * 24
+        for t in sales_transactions:
+            buckets[t.created_at.hour] += t.total_price
+        return [{"date": f"{hour:02d}:00", "total": total} for hour, total in enumerate(buckets)]
+
+    if period == "month":
+        if start.month == 12:
+            next_month = start.replace(year=start.year + 1, month=1)
+        else:
+            next_month = start.replace(month=start.month + 1)
+        num_days = (next_month - start).days
+        buckets = [0.0] * num_days
+        for t in sales_transactions:
+            buckets[t.created_at.day - 1] += t.total_price
+        return [
+            {"date": f"{start.year}-{start.month:02d}-{day:02d}", "total": total}
+            for day, total in enumerate(buckets, start=1)
+        ]
+
+    if period == "year":
+        buckets = [0.0] * 12
+        for t in sales_transactions:
+            buckets[t.created_at.month - 1] += t.total_price
+        return [
+            {"date": datetime(start.year, month, 1).strftime("%b"), "total": total}
+            for month, total in enumerate(buckets, start=1)
+        ]
+
+    # week (default)
+    buckets = [0.0] * 7
+    for t in sales_transactions:
+        buckets[t.created_at.weekday()] += t.total_price
+    return [
+        {"date": (start + timedelta(days=offset)).strftime("%Y-%m-%d"), "total": total}
+        for offset, total in enumerate(buckets)
+    ]
+
+
+def get_summary(db: Session, period: str = "week") -> dict:
     products = db.query(Product).all()
-    transactions = db.query(Transaction).all()
+    start, end = _get_period_range(period)
+    transactions = (
+        db.query(Transaction)
+        .filter(Transaction.created_at >= start, Transaction.created_at < end)
+        .all()
+    )
 
     total_sales = sum(t.total_price for t in transactions if t.type == "sale")
     total_purchases = sum(t.total_price for t in transactions if t.type == "purchase")
     low_stock = [p.to_dict() for p in products if p.stock <= 5]
 
-    # Sales per hari (7 hari terakhir)
-    sales_by_date: dict[str, float] = {}
-    for t in transactions:
-        if t.type == "sale":
-            date = t.created_at.strftime("%Y-%m-%d") if t.created_at else ""
-            sales_by_date[date] = sales_by_date.get(date, 0) + t.total_price
-
-    chart_data = [
-        {"date": d, "total": v}
-        for d, v in sorted(sales_by_date.items())
-    ][-7:]
+    chart_data = _build_chart_data(transactions, period, start)
 
     return {
         "total_sales": total_sales,
@@ -179,6 +241,19 @@ def get_chat_history(db: Session) -> list[dict]:
 def clear_chat(db: Session) -> None:
     db.query(ChatHistory).delete()
     db.commit()
+
+
+def clear_all_data(db: Session) -> dict:
+    """Hapus semua data utama aplikasi (produk, transaksi, chat)."""
+    deleted_transactions = db.query(Transaction).delete()
+    deleted_products = db.query(Product).delete()
+    deleted_chat = db.query(ChatHistory).delete()
+    db.commit()
+    return {
+        "deleted_products": deleted_products,
+        "deleted_transactions": deleted_transactions,
+        "deleted_chat_messages": deleted_chat,
+    }
 
 
 # ════════════════════════════════════════════════════════════

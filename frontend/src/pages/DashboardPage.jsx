@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   BarChart3,
   TrendingUp,
@@ -33,6 +33,36 @@ function formatRupiah(num) {
   }).format(num);
 }
 
+function formatChartLabel(value, period, withWeekday = false) {
+  if (!value) return '-';
+
+  if (period === 'day') {
+    return value;
+  }
+
+  if (period === 'year') {
+    return value;
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return value;
+  }
+
+  if (period === 'week') {
+    return parsedDate.toLocaleDateString('id-ID', {
+      weekday: withWeekday ? 'short' : undefined,
+      day: '2-digit',
+      month: 'short',
+    });
+  }
+
+  return parsedDate.toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'short',
+  });
+}
+
 function AnimatedCounter({ value, isCurrency = false }) {
   const [display, setDisplay] = useState(0);
 
@@ -59,18 +89,14 @@ function AnimatedCounter({ value, isCurrency = false }) {
   return <span>{isCurrency ? formatRupiah(display) : display}</span>;
 }
 
-const CustomTooltip = ({ active, payload, label }) => {
+const CustomTooltip = ({ active, payload, label, period }) => {
   if (active && payload && payload.length) {
     return (
-      <div style={{
-        background: '#1e293b',
-        border: '1px solid rgba(255,255,255,0.1)',
-        borderRadius: '8px',
-        padding: '12px 16px',
-        fontSize: '0.85rem',
-      }}>
-        <p style={{ color: '#94a3b8', marginBottom: 4 }}>{label}</p>
-        <p style={{ color: '#3b82f6', fontWeight: 600 }}>
+      <div className="chart-tooltip">
+        <p className="chart-tooltip-label">
+          {formatChartLabel(label, period, true)}
+        </p>
+        <p className="chart-tooltip-value">
           {formatRupiah(payload[0].value)}
         </p>
       </div>
@@ -82,25 +108,53 @@ const CustomTooltip = ({ active, payload, label }) => {
 export default function DashboardPage() {
   const [summary, setSummary] = useState(null);
   const [recentTx, setRecentTx] = useState([]);
+  const [period, setPeriod] = useState('week');
   const [loading, setLoading] = useState(true);
+  const [chartLoading, setChartLoading] = useState(false);
+  const isFirstSummaryLoad = useRef(true);
 
   useEffect(() => {
-    async function load() {
+    async function loadTransactions() {
       try {
-        const [sumRes, txRes] = await Promise.all([
-          getDashboardSummary(),
-          getTransactions(),
-        ]);
-        setSummary(sumRes.data);
+        const txRes = await getTransactions();
         setRecentTx(txRes.data.slice(-5).reverse());
       } catch (err) {
-        console.error('Failed to load dashboard:', err);
-      } finally {
-        setLoading(false);
+        console.error('Failed to load transactions:', err);
       }
     }
-    load();
+
+    loadTransactions();
   }, []);
+
+  useEffect(() => {
+    async function loadSummary() {
+      const firstLoad = isFirstSummaryLoad.current;
+      if (firstLoad) {
+        setLoading(true);
+      } else {
+        setChartLoading(true);
+      }
+
+      try {
+        const sumRes = await getDashboardSummary(period);
+        setSummary(sumRes.data);
+      } catch (err) {
+        console.error('Failed to load dashboard summary:', err);
+        if (firstLoad) {
+          setSummary(null);
+        }
+      } finally {
+        if (firstLoad) {
+          setLoading(false);
+          isFirstSummaryLoad.current = false;
+        } else {
+          setChartLoading(false);
+        }
+      }
+    }
+
+    loadSummary();
+  }, [period]);
 
   const handleExportTx = async () => {
     try {
@@ -142,7 +196,7 @@ export default function DashboardPage() {
     <div className="fade-in-up">
       <div className="page-header">
         <h2>Dashboard</h2>
-        <p>Ringkasan bisnis Anda hari ini</p>
+        <p>Ringkasan bisnis berdasarkan periode terpilih</p>
       </div>
 
       {/* Stats Cards */}
@@ -193,12 +247,22 @@ export default function DashboardPage() {
       </div>
 
       {/* Chart + Recent Transactions */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
+      <div className="dashboard-layout">
         {/* Sales Chart */}
         <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>Grafik Penjualan</h3>
-            <div style={{ display: 'flex', gap: 8 }}>
+          <div className="section-header">
+            <h3 className="section-title">Grafik Penjualan</h3>
+            <div className="action-row">
+              <select
+                className="period-select"
+                value={period}
+                onChange={(e) => setPeriod(e.target.value)}
+              >
+                <option value="day">Harian</option>
+                <option value="week">Mingguan</option>
+                <option value="month">Bulanan</option>
+                <option value="year">Tahunan</option>
+              </select>
               <button className="btn btn-secondary btn-sm" onClick={handleExportTx}>
                 <FileSpreadsheet size={14} /> Export Transaksi
               </button>
@@ -207,8 +271,12 @@ export default function DashboardPage() {
               </button>
             </div>
           </div>
-          <div className="chart-container" style={{ height: 280 }}>
-            {summary.chart_data.length > 0 ? (
+          <div className="chart-container chart-wrap">
+            {chartLoading ? (
+              <div className="empty-state">
+                <p>Memuat grafik...</p>
+              </div>
+            ) : summary.chart_data.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={summary.chart_data}>
                   <defs>
@@ -217,22 +285,23 @@ export default function DashboardPage() {
                       <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis
                     dataKey="date"
-                    stroke="#64748b"
+                    stroke="#94a3b8"
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
+                    tickFormatter={(value) => formatChartLabel(value, period)}
                   />
                   <YAxis
-                    stroke="#64748b"
+                    stroke="#94a3b8"
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={(v) => `${(v / 1000000).toFixed(0)}jt`}
                   />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={<CustomTooltip period={period} />} />
                   <Area
                     type="monotone"
                     dataKey="total"
@@ -252,34 +321,19 @@ export default function DashboardPage() {
 
         {/* Recent Transactions */}
         <div className="card">
-          <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 16 }}>Transaksi Terbaru</h3>
+          <h3 className="section-title" style={{ marginBottom: 16 }}>Transaksi Terbaru</h3>
           {recentTx.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="recent-list">
               {recentTx.map((tx) => (
-                <div
-                  key={tx.id}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '10px 0',
-                    borderBottom: '1px solid var(--border-color)',
-                  }}
-                >
+                <div key={tx.id} className="recent-item">
                   <div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>
-                      {tx.product_name}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    <div className="recent-name">{tx.product_name}</div>
+                    <div className="recent-meta">
                       {tx.quantity}x · {tx.created_at?.slice(0, 10)}
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      color: tx.type === 'sale' ? 'var(--accent-emerald)' : 'var(--accent-blue)',
-                    }}>
+                  <div className="recent-right">
+                    <div className={`recent-total ${tx.type}`}>
                       {tx.type === 'sale' ? '+' : '-'}{formatRupiah(tx.total_price)}
                     </div>
                     <span className={`badge ${tx.type}`}>
