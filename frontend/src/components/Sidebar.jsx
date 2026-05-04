@@ -5,12 +5,14 @@ import {
   ArrowLeftRight,
   MessageCircle,
   Bot,
+  Wallet,
 } from 'lucide-react';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/products', icon: Package, label: 'Produk & Stok' },
   { to: '/transactions', icon: ArrowLeftRight, label: 'Transaksi' },
+  { to: '/expenses', icon: Wallet, label: 'Pengeluaran' },
   { to: '/chat', icon: MessageCircle, label: 'AI WhatsApp' },
 ];
 

@@ -22,6 +22,12 @@ export const getTransactions = () => api.get('/api/transactions');
 export const createTransaction = (data) => api.post('/api/transactions', data);
 export const deleteTransaction = (id) => api.delete(`/api/transactions/${id}`);
 
+// ── Expenses ─────────────────────────────────────────────
+export const getExpenses = () => api.get('/api/expenses');
+export const createExpense = (data) => api.post('/api/expenses', data);
+export const updateExpense = (id, data) => api.put(`/api/expenses/${id}`, data);
+export const deleteExpense = (id) => api.delete(`/api/expenses/${id}`);
+
 // ── Admin (Danger Zone) ────────────────────────────────────
 export const clearAllData = () => api.delete('/api/admin/clear-all');
 
@@ -31,6 +37,8 @@ export const exportTransactionsExcel = () =>
   api.get('/api/export/transactions', { responseType: 'blob' });
 export const exportProductsExcel = () =>
   api.get('/api/export/products', { responseType: 'blob' });
+
+export const syncGoogleSheets = () => api.post('/api/sync-google-sheets');
 
 // Helper to trigger download
 export const downloadBlob = (blob, filename) => {

@@ -76,3 +76,22 @@ class ChatHistory(Base):
             "content": self.content,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
         }
+
+
+class Expense(Base):
+    __tablename__ = "expenses"
+
+    id = Column(String, primary_key=True, default=lambda: _gen_id("e"))
+    name = Column(String(200), nullable=False)
+    amount = Column(Float, default=0)
+    note = Column(Text, default="")
+    created_at = Column(DateTime, default=datetime.now)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "amount": self.amount,
+            "note": self.note,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }

@@ -74,6 +74,16 @@ class TransactionCreate(BaseModel):
     type: str = "sale"   # "sale" atau "purchase"
     note: str = ""
 
+class ExpenseCreate(BaseModel):
+    name: str
+    amount: float
+    note: str = ""
+
+class ExpenseUpdate(BaseModel):
+    name: Optional[str] = None
+    amount: Optional[float] = None
+    note: Optional[str] = None
+
 
 # ════════════════════════════════════════════════════════════
 # Dashboard
@@ -160,6 +170,43 @@ async def delete_transaction(tx_id: str, db: Session = Depends(get_db)):
 
 
 # ════════════════════════════════════════════════════════════
+# Expenses
+# ════════════════════════════════════════════════════════════
+
+@app.get("/api/expenses")
+async def list_expenses(db: Session = Depends(get_db)):
+    """Daftar semua pengeluaran."""
+    return crud.get_expenses(db)
+
+
+@app.post("/api/expenses")
+async def create_expense(expense: ExpenseCreate, db: Session = Depends(get_db)):
+    """Buat pengeluaran baru."""
+    return crud.create_expense(
+        db,
+        name=expense.name,
+        amount=expense.amount,
+        note=expense.note,
+    )
+
+
+@app.put("/api/expenses/{expense_id}")
+async def update_expense(expense_id: str, expense: ExpenseUpdate, db: Session = Depends(get_db)):
+    """Update pengeluaran yang ada."""
+    e = crud.update_expense(db, expense_id, **expense.model_dump(exclude_none=True))
+    if not e:
+        raise HTTPException(status_code=404, detail="Expense not found")
+    return e
+
+
+@app.delete("/api/expenses/{expense_id}")
+async def delete_expense(expense_id: str, db: Session = Depends(get_db)):
+    """Hapus pengeluaran."""
+    crud.delete_expense(db, expense_id)
+    return {"message": "Expense deleted"}
+
+
+# ════════════════════════════════════════════════════════════
 # Admin (Danger Zone)
 # ════════════════════════════════════════════════════════════
 
@@ -197,6 +244,18 @@ async def export_products_excel(db: Session = Depends(get_db)):
     )
 
 
+# ════════════════════════════════════════════════════════════
+# Health
+# ════════════════════════════════════════════════════════════
+
+@app.get("/api/health")
+async def health():
+    return {"status": "ok", "version": "2.0.0", "database": "SQLite"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 # ════════════════════════════════════════════════════════════
 # Health
 # ════════════════════════════════════════════════════════════

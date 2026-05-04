@@ -67,6 +67,36 @@ def create_transaction(product_id: str, quantity: int, type: str, note: str = ""
     finally:
         db.close()
 
+@mcp.tool()
+def list_expenses() -> str:
+    """Get the list of all operational expenses (pengeluaran)."""
+    db = next(get_db())
+    try:
+        expenses = crud.get_expenses(db)
+        return json.dumps(expenses, indent=2)
+    finally:
+        db.close()
+
+@mcp.tool()
+def create_expense(name: str, amount: float, note: str = "") -> str:
+    """Record a new operational expense (pengeluaran). DO NOT use this for purchasing product restocks.
+    Args:
+        name: Name or description of the expense (e.g., 'Bayar Listrik', 'Gaji Pegawai').
+        amount: The total amount of the expense.
+        note: Optional additional notes.
+    """
+    db = next(get_db())
+    try:
+        e = crud.create_expense(
+            db,
+            name=name,
+            amount=amount,
+            note=note
+        )
+        return f"Expense created successfully. ID: {e['id']}, Name: {e['name']}, Amount: {e['amount']}"
+    finally:
+        db.close()
+
 # FastMCP handles SSE natively.
 if __name__ == "__main__":
     # If run standalone, run the FastMCP server directly

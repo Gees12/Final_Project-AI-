@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from "react";
 import {
   BarChart3,
   TrendingUp,
@@ -6,7 +6,8 @@ import {
   AlertTriangle,
   Download,
   FileSpreadsheet,
-} from 'lucide-react';
+  Wallet,
+} from "lucide-react";
 import {
   AreaChart,
   Area,
@@ -15,32 +16,32 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-} from 'recharts';
+} from "recharts";
 import {
   getDashboardSummary,
   getTransactions,
   exportTransactionsExcel,
   exportProductsExcel,
   downloadBlob,
-} from '../api/client';
+} from "../api/client";
 
 function formatRupiah(num) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(num);
 }
 
 function formatChartLabel(value, period, withWeekday = false) {
-  if (!value) return '-';
+  if (!value) return "-";
 
-  if (period === 'day') {
+  if (period === "day") {
     return value;
   }
 
-  if (period === 'year') {
+  if (period === "year") {
     return value;
   }
 
@@ -49,17 +50,17 @@ function formatChartLabel(value, period, withWeekday = false) {
     return value;
   }
 
-  if (period === 'week') {
-    return parsedDate.toLocaleDateString('id-ID', {
-      weekday: withWeekday ? 'short' : undefined,
-      day: '2-digit',
-      month: 'short',
+  if (period === "week") {
+    return parsedDate.toLocaleDateString("id-ID", {
+      weekday: withWeekday ? "short" : undefined,
+      day: "2-digit",
+      month: "short",
     });
   }
 
-  return parsedDate.toLocaleDateString('id-ID', {
-    day: '2-digit',
-    month: 'short',
+  return parsedDate.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
   });
 }
 
@@ -70,7 +71,10 @@ function AnimatedCounter({ value, isCurrency = false }) {
     const end = value;
     const absEnd = Math.abs(end);
     let start = 0;
-    if (absEnd === 0) { setDisplay(0); return; }
+    if (absEnd === 0) {
+      setDisplay(0);
+      return;
+    }
     const duration = 1000;
     const step = Math.max(1, Math.floor(absEnd / (duration / 16)));
     const sign = end < 0 ? -1 : 1;
@@ -96,9 +100,7 @@ const CustomTooltip = ({ active, payload, label, period }) => {
         <p className="chart-tooltip-label">
           {formatChartLabel(label, period, true)}
         </p>
-        <p className="chart-tooltip-value">
-          {formatRupiah(payload[0].value)}
-        </p>
+        <p className="chart-tooltip-value">{formatRupiah(payload[0].value)}</p>
       </div>
     );
   }
@@ -108,7 +110,7 @@ const CustomTooltip = ({ active, payload, label, period }) => {
 export default function DashboardPage() {
   const [summary, setSummary] = useState(null);
   const [recentTx, setRecentTx] = useState([]);
-  const [period, setPeriod] = useState('week');
+  const [period, setPeriod] = useState("week");
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
   const isFirstSummaryLoad = useRef(true);
@@ -119,7 +121,7 @@ export default function DashboardPage() {
         const txRes = await getTransactions();
         setRecentTx(txRes.data.slice(-5).reverse());
       } catch (err) {
-        console.error('Failed to load transactions:', err);
+        console.error("Failed to load transactions:", err);
       }
     }
 
@@ -139,7 +141,7 @@ export default function DashboardPage() {
         const sumRes = await getDashboardSummary(period);
         setSummary(sumRes.data);
       } catch (err) {
-        console.error('Failed to load dashboard summary:', err);
+        console.error("Failed to load dashboard summary:", err);
         if (firstLoad) {
           setSummary(null);
         }
@@ -159,18 +161,18 @@ export default function DashboardPage() {
   const handleExportTx = async () => {
     try {
       const res = await exportTransactionsExcel();
-      downloadBlob(res.data, 'transaksi.xlsx');
+      downloadBlob(res.data, "transaksi.xlsx");
     } catch (err) {
-      alert('Gagal export: ' + err.message);
+      alert("Gagal export: " + err.message);
     }
   };
 
   const handleExportProducts = async () => {
     try {
       const res = await exportProductsExcel();
-      downloadBlob(res.data, 'produk.xlsx');
+      downloadBlob(res.data, "produk.xlsx");
     } catch (err) {
-      alert('Gagal export: ' + err.message);
+      alert("Gagal export: " + err.message);
     }
   };
 
@@ -204,29 +206,37 @@ export default function DashboardPage() {
         <div className="card stat-card blue">
           <div className="stat-card-header">
             <span className="stat-card-label">Total Penjualan</span>
-            <div className="stat-card-icon"><BarChart3 size={22} /></div>
+            <div className="stat-card-icon">
+              <BarChart3 size={22} />
+            </div>
           </div>
           <div className="stat-card-value">
             <AnimatedCounter value={summary.total_sales} isCurrency />
           </div>
-          <div className="stat-card-sub">{summary.total_transactions} transaksi</div>
+          <div className="stat-card-sub">
+            {summary.total_transactions} transaksi
+          </div>
         </div>
 
         <div className="card stat-card emerald">
           <div className="stat-card-header">
             <span className="stat-card-label">Pemasukan Bersih</span>
-            <div className="stat-card-icon"><TrendingUp size={22} /></div>
+            <div className="stat-card-icon">
+              <TrendingUp size={22} />
+            </div>
           </div>
           <div className="stat-card-value">
             <AnimatedCounter value={summary.net_income} isCurrency />
           </div>
-          <div className="stat-card-sub">Penjualan - Pembelian</div>
+          <div className="stat-card-sub">Total Pemasukan Bersih</div>
         </div>
 
         <div className="card stat-card amber">
           <div className="stat-card-header">
             <span className="stat-card-label">Total Produk</span>
-            <div className="stat-card-icon"><Package size={22} /></div>
+            <div className="stat-card-icon">
+              <Package size={22} />
+            </div>
           </div>
           <div className="stat-card-value">
             <AnimatedCounter value={summary.total_products} />
@@ -236,8 +246,23 @@ export default function DashboardPage() {
 
         <div className="card stat-card rose">
           <div className="stat-card-header">
+            <span className="stat-card-label">Total Pengeluaran</span>
+            <div className="stat-card-icon">
+              <Wallet size={22} />
+            </div>
+          </div>
+          <div className="stat-card-value">
+            <AnimatedCounter value={summary.total_expenses} isCurrency />
+          </div>
+          <div className="stat-card-sub">operasional & pembelian stok</div>
+        </div>
+
+        <div className="card stat-card rose">
+          <div className="stat-card-header">
             <span className="stat-card-label">Stok Rendah</span>
-            <div className="stat-card-icon"><AlertTriangle size={22} /></div>
+            <div className="stat-card-icon">
+              <AlertTriangle size={22} />
+            </div>
           </div>
           <div className="stat-card-value">
             <AnimatedCounter value={summary.low_stock_count} />
@@ -263,10 +288,16 @@ export default function DashboardPage() {
                 <option value="month">Bulanan</option>
                 <option value="year">Tahunan</option>
               </select>
-              <button className="btn btn-secondary btn-sm" onClick={handleExportTx}>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={handleExportTx}
+              >
                 <FileSpreadsheet size={14} /> Export Transaksi
               </button>
-              <button className="btn btn-secondary btn-sm" onClick={handleExportProducts}>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={handleExportProducts}
+              >
                 <Download size={14} /> Export Produk
               </button>
             </div>
@@ -321,7 +352,9 @@ export default function DashboardPage() {
 
         {/* Recent Transactions */}
         <div className="card">
-          <h3 className="section-title" style={{ marginBottom: 16 }}>Transaksi Terbaru</h3>
+          <h3 className="section-title" style={{ marginBottom: 16 }}>
+            Transaksi Terbaru
+          </h3>
           {recentTx.length > 0 ? (
             <div className="recent-list">
               {recentTx.map((tx) => (
@@ -334,10 +367,11 @@ export default function DashboardPage() {
                   </div>
                   <div className="recent-right">
                     <div className={`recent-total ${tx.type}`}>
-                      {tx.type === 'sale' ? '+' : '-'}{formatRupiah(tx.total_price)}
+                      {tx.type === "sale" ? "+" : "-"}
+                      {formatRupiah(tx.total_price)}
                     </div>
                     <span className={`badge ${tx.type}`}>
-                      {tx.type === 'sale' ? 'Penjualan' : 'Pembelian'}
+                      {tx.type === "sale" ? "Penjualan" : "Pembelian"}
                     </span>
                   </div>
                 </div>

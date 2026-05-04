@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from models import Product, Transaction, ChatHistory
+from models import Product, Transaction, ChatHistory, Expense
 
 
 # ════════════════════════════════════════════════════════════
@@ -119,6 +119,81 @@ def delete_transaction(db: Session, tx_id: str) -> None:
 
 
 # ════════════════════════════════════════════════════════════
+# Expenses
+# ════════════════════════════════════════════════════════════
+
+def get_expenses(db: Session) -> list[dict]:
+    # Ambil pengeluaran manual dari tabel expenses
+    expense_rows = db.query(Expense).all()
+    results = [r.to_dict() for r in expense_rows]
+
+    # Ambil transaksi tipe 'purchase' (pembelian stok) untuk dimasukkan ke pengeluaran
+    purchase_rows = db.query(Transaction).filter(Transaction.type == "purchase").all()
+    for p in purchase_rows:
+        results.append({
+            "id": f"tx-{p.id}",  # Prefix agar bisa dibedakan dan dihapus
+            "name": f"Pembelian: {p.product_name}",
+            "amount": p.total_price,
+            "note": p.note or f"Restock {p.quantity} unit",
+            "created_at": p.created_at.isoformat() if p.created_at else None,
+            "is_automated": True
+        })
+
+    # Urutkan berdasarkan tanggal (asc karena frontend biasanya me-reverse)
+    results.sort(key=lambda x: x["created_at"] or "")
+    return results
+
+
+def get_expense(db: Session, expense_id: str) -> Expense | None:
+    return db.query(Expense).filter(Expense.id == expense_id).first()
+
+def create_expense(
+    db: Session,
+    name: str,
+    amount: float,
+    note: str = "",
+) -> dict:
+    e = Expense(
+        id=f"e{uuid.uuid4().hex[:8]}",
+        name=name,
+        amount=amount,
+        note=note,
+        created_at=datetime.now(),
+    )
+    db.add(e)
+    db.commit()
+    db.refresh(e)
+    return e.to_dict()
+
+def update_expense(db: Session, expense_id: str, **kwargs) -> dict | None:
+    e = get_expense(db, expense_id)
+    if not e:
+        return None
+    allowed = {"name", "amount", "note"}
+    for key, val in kwargs.items():
+        if key in allowed and val is not None:
+            setattr(e, key, val)
+    db.commit()
+    db.refresh(e)
+    return e.to_dict()
+
+def delete_expense(db: Session, expense_id: str) -> None:
+    if expense_id.startswith("tx-"):
+        # Jika ini adalah 'pengeluaran' dari transaksi, hapus transaksinya
+        tx_id = expense_id[3:]
+        tx = db.query(Transaction).filter(Transaction.id == tx_id).first()
+        if tx:
+            db.delete(tx)
+            db.commit()
+    else:
+        # Pengeluaran manual biasa
+        e = get_expense(db, expense_id)
+        if e:
+            db.delete(e)
+            db.commit()
+
+
+# ════════════════════════════════════════════════════════════
 # Dashboard Summary
 # ════════════════════════════════════════════════════════════
 
@@ -197,9 +272,20 @@ def get_summary(db: Session, period: str = "week") -> dict:
         .filter(Transaction.created_at >= start, Transaction.created_at < end)
         .all()
     )
+    
+    expenses_list = (
+        db.query(Expense)
+        .filter(Expense.created_at >= start, Expense.created_at < end)
+        .all()
+    )
 
     total_sales = sum(t.total_price for t in transactions if t.type == "sale")
     total_purchases = sum(t.total_price for t in transactions if t.type == "purchase")
+    manual_expenses = sum(e.amount for e in expenses_list)
+    
+    # Total pengeluaran adalah gabungan pembelian stok dan pengeluaran manual
+    total_out = total_purchases + manual_expenses
+    
     low_stock = [p.to_dict() for p in products if p.stock <= 5]
 
     chart_data = _build_chart_data(transactions, period, start)
@@ -207,7 +293,8 @@ def get_summary(db: Session, period: str = "week") -> dict:
     return {
         "total_sales": total_sales,
         "total_purchases": total_purchases,
-        "net_income": total_sales - total_purchases,
+        "total_expenses": total_out,
+        "net_income": total_sales - total_out,
         "total_products": len(products),
         "total_transactions": len(transactions),
         "low_stock_count": len(low_stock),
@@ -244,14 +331,16 @@ def clear_chat(db: Session) -> None:
 
 
 def clear_all_data(db: Session) -> dict:
-    """Hapus semua data utama aplikasi (produk, transaksi, chat)."""
+    """Hapus semua data utama aplikasi (produk, transaksi, pengeluaran, chat)."""
     deleted_transactions = db.query(Transaction).delete()
     deleted_products = db.query(Product).delete()
+    deleted_expenses = db.query(Expense).delete()
     deleted_chat = db.query(ChatHistory).delete()
     db.commit()
     return {
         "deleted_products": deleted_products,
         "deleted_transactions": deleted_transactions,
+        "deleted_expenses": deleted_expenses,
         "deleted_chat_messages": deleted_chat,
     }
 
